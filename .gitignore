@@ -1,0 +1,5 @@
+.idea
+consumer/target
+producer/target
+consumer/src/main/resources/application.properties
+producer/src/main/resources/application.properties
