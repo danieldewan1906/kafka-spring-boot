@@ -1,11 +1,10 @@
 package com.learn.kafka.producer.service.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.learn.kafka.producer.model.Orders;
-import com.learn.kafka.producer.model.Products;
+import com.learn.kafka.producer.model.Payments;
 import com.learn.kafka.producer.repository.OrderRepository;
-import com.learn.kafka.producer.repository.ProductRepository;
+import com.learn.kafka.producer.repository.PaymentRepository;
 import com.learn.kafka.producer.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -19,13 +18,10 @@ import java.util.Random;
 
 @Service
 public class OrderServiceImpl implements OrderService {
-    private static final String TOPIC = "orders";
     @Autowired
     private OrderRepository orderRepository;
     @Autowired
-    private ProductRepository productRepository;
-    @Autowired
-    private KafkaTemplate<String, String> kafkaTemplate;
+    private PaymentRepository paymentRepository;
 
     @Override
     public Map<String, Object> checkout(Map<String, Object> data) {
@@ -33,20 +29,6 @@ public class OrderServiceImpl implements OrderService {
         Integer qty = (Integer) data.get("quantity");
         Integer total = (Integer) data.get("total");
         String orderNo = generateOrderNo();
-        ObjectMapper mapper = new ObjectMapper();
-
-        try {
-            Products products = productRepository.findById(productId.longValue()).orElseThrow();
-            if (products.getId() == null || !products.getIsActive()) {
-                throw new RuntimeException();
-            }
-
-            data.put("orderNo", orderNo);
-            String value = mapper.writeValueAsString(data);
-            kafkaTemplate.send(TOPIC, value);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
 
         Orders orders = new Orders();
         orders.setStatus("CREATED");
@@ -56,6 +38,12 @@ public class OrderServiceImpl implements OrderService {
         orders.setCreatedDate(new Date());
         orders.setOrderNo(orderNo);
         orderRepository.save(orders);
+
+        Payments payments = new Payments();
+        payments.setOrderNo(orderNo);
+        payments.setStatus("PAYMENT_PENDING");
+        payments.setCreatedDate(new Date());
+        paymentRepository.save(payments);
 
         Map<String, Object> response = new HashMap<>();
         response.put("statusCode", 200);
